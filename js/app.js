@@ -5,8 +5,8 @@ let whatIfDebtId = "";
 let whatIfExtra = 0;
 
 const PAGE_META = {
-  dashboard: ["Dashboard", "Cash flow, upcoming bills, and a snapshot of your money"],
-  accounts: ["Accounts", "Checking, savings, cash, and transfers between them"],
+  dashboard: ["Dashboard", "Accounts, upcoming bills, and a snapshot of your money"],
+  accounts: ["Accounts", "Checking, savings, cash, retirement, and transfers between them"],
   transactions: ["Transactions", "Current and future money in and out"],
   income: ["Income", "Biweekly paycheck and other deposits"],
   debts: ["Debts & Loans", "Balances, extra-payment what-ifs, and payoff estimates"],
@@ -141,12 +141,8 @@ function accountOptions(selectedId, allowEmpty = false) {
 }
 
 function renderDashboard() {
-  const period = payPeriodSummary(state);
   const debts = debtTotals(state);
   const month = monthlyTotals(state);
-  const series = cashFlowSeries(state, 28);
-  const minBal = Math.min(...series.map((p) => p.balance));
-  const maxBal = Math.max(...series.map((p) => p.balance), 1);
   const upcoming = (() => {
     let paycheckKept = false;
     return futureEvents(state, 2).filter((ev) => {
@@ -159,13 +155,6 @@ function renderDashboard() {
   const assets = assetsTotal(state);
   const paydayTotal = projectedTotalAtPayday(state);
   const overBudget = (state.budgets || []).filter((b) => (month.byCategory[b.category] || 0) > Number(b.monthlyLimit));
-
-  const chart = series.filter((_, i) => i % 2 === 0).map((p) => {
-    const range = Math.max(maxBal - Math.min(minBal, 0), 1);
-    const h = Math.max(8, ((p.balance - Math.min(minBal, 0)) / range) * 90);
-    const cls = p.balance < 0 ? "negative" : "";
-    return `<div class="col"><div class="stem ${cls}" style="height:${h}px;background:${p.balance < 0 ? "var(--expense)" : "var(--accent)"}"></div><div class="lbl">${p.date.getMonth() + 1}/${p.date.getDate()}</div></div>`;
-  }).join("");
 
   $("page-dashboard").innerHTML = `
     <div class="grid cols-2">
@@ -185,10 +174,10 @@ function renderDashboard() {
           <div class="row-item">
             <div>
               <div>${escapeHtml(account.name)}</div>
-              <div class="meta">${escapeHtml(accountTypeLabel(account.type))}${account.includeInCashFlow ? " · used for bills" : " · set aside"}</div>
+              <div class="meta">${escapeHtml(accountTypeLabel(account.type))}${isRetirementAccount(account) ? " · net worth only" : account.includeInCashFlow ? " · used for bills" : " · set aside"}</div>
             </div>
             <strong>${formatMoney(account.balance)}</strong>
-          </div>`).join("") : `<div class="empty">Add checking, savings, or cash on the Accounts page.</div>`}
+          </div>`).join("") : `<div class="empty">Add checking, savings, cash, or retirement on the Accounts page.</div>`}
       </div>
       <div class="card">
         <h3>Coming up</h3>
@@ -202,20 +191,16 @@ function renderDashboard() {
           </div>`).join("")}</div>` : `<div class="empty">No upcoming paycheck, deposit, or planned transaction yet.</div>`}
       </div>
     </div>
-    <div class="grid cols-2" style="margin-top:14px">
-      <div class="card">
-        <h3>Paycheck-to-paycheck</h3>
-        <p class="muted">Spending accounts only. Income landing before next payday: ${formatMoney(period.income)}. Planned spending until then: ${formatMoney(period.expenses)}.</p>
-        <div class="cashflow">${chart}</div>
-      </div>
-      <div class="card">
-        <h3>This month</h3>
+    <div class="card" style="margin-top:14px">
+      <h3>This month</h3>
+      <div class="grid cols-2">
         <div class="row-item"><span>Recorded spending</span><strong class="negative">${formatMoney(month.spent)}</strong></div>
         <div class="row-item"><span>Recorded income</span><strong class="positive">${formatMoney(month.earned)}</strong></div>
         <div class="row-item"><span>Projected monthly income</span><strong>${formatMoney(projectedMonthlyIncome(state))}</strong></div>
-        ${overBudget.length ? `<p class="negative" style="margin:12px 0 0">Over budget: ${overBudget.map((b) => escapeHtml(b.category)).join(", ")}</p>` : `<p class="muted" style="margin:12px 0 0">No budget overruns this month.</p>`}
-        <div class="row-item" style="margin-top:8px"><span>Total debt</span><strong class="negative">${formatMoney(debts.balance)}</strong></div>
+        <div class="row-item"><span>Net worth</span><strong>${formatMoney(netWorth(state))}</strong></div>
+        <div class="row-item"><span>Total debt</span><strong class="negative">${formatMoney(debts.balance)}</strong></div>
       </div>
+      ${overBudget.length ? `<p class="negative" style="margin:12px 0 0">Over budget: ${overBudget.map((b) => escapeHtml(b.category)).join(", ")}</p>` : `<p class="muted" style="margin:12px 0 0">No budget overruns this month.</p>`}
     </div>
   `;
 }
@@ -223,9 +208,9 @@ function renderDashboard() {
 function renderAccounts() {
   const accounts = state.accounts || [];
   $("page-accounts").innerHTML = `
-    <div class="help">Spending accounts (checking and cash) drive the paycheck-to-paycheck forecast. Savings stays set aside until you transfer it.</div>
+    <div class="help">Spending accounts drive the paycheck-to-paycheck forecast. Savings stays set aside until you transfer it. Retirement is left out of Accounts total and still counts in net worth.</div>
     <div class="toolbar">
-      <div class="muted">Spending ${formatMoney(spendingTotal(state))} · Set aside ${formatMoney(savingsTotal(state))}</div>
+      <div class="muted">Spending ${formatMoney(spendingTotal(state))} · Set aside ${formatMoney(savingsTotal(state))}${retirementTotal(state) ? ` · Retirement ${formatMoney(retirementTotal(state))}` : ""}</div>
       <div class="spacer"></div>
       <button class="btn" id="transfer-money">Transfer</button>
       <button class="btn primary" id="add-account">Add account</button>
@@ -233,6 +218,10 @@ function renderAccounts() {
     <div class="accounts-total">
       <span>Accounts total</span>
       ${formatMoney(assetsTotal(state))}
+      <div class="accounts-projected">
+        ${formatMoney(netWorth(state))}
+        <span>Net worth · includes retirement, minus debt</span>
+      </div>
     </div>
     <div class="grid cols-3">
       ${accounts.length ? accounts.map((account) => `
@@ -242,13 +231,13 @@ function renderAccounts() {
             <span class="badge">${escapeHtml(accountTypeLabel(account.type))}</span>
           </div>
           <div class="stat-value">${formatMoney(account.balance)}</div>
-          <div class="stat-note">${account.includeInCashFlow ? "Counts toward bills and payday forecast" : "Held back from spending forecast"}</div>
+          <div class="stat-note">${isRetirementAccount(account) ? "Counts toward net worth, not Accounts total" : account.includeInCashFlow ? "Counts toward bills and payday forecast" : "Held back from spending forecast"}</div>
           ${state.primaryAccountId === account.id ? `<div class="account-flag" style="margin-top:8px">Default account for new transactions</div>` : ""}
           <div class="toolbar" style="margin-top:12px">
-            ${state.primaryAccountId === account.id ? "" : `<button class="btn small" data-default-account="${account.id}">Make default</button>`}
+            ${state.primaryAccountId === account.id || isRetirementAccount(account) ? "" : `<button class="btn small" data-default-account="${account.id}">Make default</button>`}
             <button class="btn small" data-edit-account="${account.id}">Edit</button>
           </div>
-        </div>`).join("") : `<div class="card empty">Add a checking, savings, or cash account.</div>`}
+        </div>`).join("") : `<div class="card empty">Add a checking, savings, cash, or retirement account.</div>`}
     </div>
   `;
   $("add-account").addEventListener("click", () => openAccountModal());
@@ -269,15 +258,17 @@ function openAccountModal(id) {
   const account = (state.accounts || []).find((item) => item.id === id) || {
     name: "", type: "checking", balance: "", includeInCashFlow: true,
   };
+  const retire = account.type === "retirement";
   openModal(id ? "Edit account" : "Add account", `
     <div class="form-grid">
-      <div class="field span-2"><label>Name</label><input id="a-name" value="${escapeHtml(account.name)}" placeholder="Checking, emergency savings..."></div>
+      <div class="field span-2"><label>Name</label><input id="a-name" value="${escapeHtml(account.name)}" placeholder="Checking, emergency savings, TSP..."></div>
       <div class="field"><label>Type</label>
         <select id="a-type">${ACCOUNT_TYPES.map(([value, label]) => `<option value="${value}" ${value === (account.type || "checking") ? "selected" : ""}>${label}</option>`).join("")}</select>
       </div>
       <div class="field"><label>Current balance</label><input id="a-bal" type="number" step="0.01" value="${escapeHtml(account.balance)}"></div>
-      <div class="field span-2"><label class="check"><input id="a-spend" type="checkbox" ${account.includeInCashFlow !== false ? "checked" : ""}> Include in spending cash / payday forecast</label></div>
+      <div class="field span-2" id="a-spend-field" ${retire ? "hidden" : ""}><label class="check"><input id="a-spend" type="checkbox" ${!retire && account.includeInCashFlow !== false ? "checked" : ""}> Include in spending cash / payday forecast</label></div>
     </div>
+    <p class="muted" id="a-retire-note" style="margin:12px 0 0" ${retire ? "" : "hidden"}>Retirement is left out of Accounts total and the payday forecast. It still counts toward net worth.</p>
   `, [
     ...(id ? [{ label: "Delete", className: "danger", onClick: () => {
       if ((state.accounts || []).length <= 1) { toast("Keep at least one account"); return; }
@@ -290,7 +281,7 @@ function openAccountModal(id) {
     { label: "Save", className: "primary", onClick: () => {
       if (!fieldValue("a-name").trim()) { toast("Enter an account name"); return; }
       const type = fieldValue("a-type");
-      const include = document.getElementById("a-spend").checked;
+      const include = type === "retirement" ? false : document.getElementById("a-spend").checked;
       const next = {
         id: id || uid(),
         name: fieldValue("a-name").trim(),
@@ -301,14 +292,24 @@ function openAccountModal(id) {
       const existing = state.accounts.find((item) => item.id === next.id);
       if (existing) Object.assign(existing, next);
       else state.accounts.push(next);
-      if (!state.primaryAccountId) state.primaryAccountId = next.id;
+      if (next.type === "retirement") {
+        if (state.primaryAccountId === next.id) state.primaryAccountId = defaultAccountId(state);
+      } else if (!state.primaryAccountId) {
+        state.primaryAccountId = next.id;
+      }
       closeModal();
       persist();
     } },
   ]);
-  $("a-type").addEventListener("change", () => {
-    if (!id) document.getElementById("a-spend").checked = fieldValue("a-type") !== "savings";
-  });
+  const syncTypeFields = () => {
+    const type = fieldValue("a-type");
+    const isRetire = type === "retirement";
+    $("a-spend-field").hidden = isRetire;
+    $("a-retire-note").hidden = !isRetire;
+    if (isRetire) $("a-spend").checked = false;
+    else if (!id) $("a-spend").checked = type !== "savings";
+  };
+  $("a-type").addEventListener("change", syncTypeFields);
 }
 
 function openTransferModal() {
@@ -967,7 +968,7 @@ function openGoalModal(id) {
       </div>
       <div class="field"><label>Target date</label><input id="g-dead" type="date" value="${escapeHtml(g.deadline || "")}"></div>
     </div>
-    <p class="muted" style="margin:12px 0 0">Link to one account, or to Accounts total (checking + savings + cash). Linked progress ignores "saved so far."</p>
+    <p class="muted" style="margin:12px 0 0">Link to one account, or to Accounts total (checking, savings, and cash — not retirement). Linked progress ignores "saved so far."</p>
   `, [
     ...(id ? [{ label: "Delete", className: "danger", onClick: () => { state.goals = state.goals.filter((x) => x.id !== id); closeModal(); persist(); } }] : []),
     { label: "Cancel", onClick: closeModal },
@@ -1049,9 +1050,11 @@ function renderSettings() {
     <div class="grid cols-2">
       <div class="card">
         <h3>Accounts</h3>
-        <p class="muted">Checking, savings, and cash balances now live on the Accounts page. Spending cash is checking plus any other account marked for bills.</p>
+        <p class="muted">Checking, savings, and cash live on the Accounts page. Retirement is left out of Accounts total and still counts in net worth.</p>
         <div class="row-item"><span>Spending cash</span><strong>${formatMoney(spendingTotal(state))}</strong></div>
         <div class="row-item"><span>Savings / set-aside</span><strong>${formatMoney(savingsTotal(state))}</strong></div>
+        <div class="row-item"><span>Retirement</span><strong>${formatMoney(retirementTotal(state))}</strong></div>
+        <div class="row-item"><span>Net worth</span><strong>${formatMoney(netWorth(state))}</strong></div>
         <div class="toolbar" style="margin-top:12px"><button class="btn primary" id="goto-accounts">Open accounts</button></div>
       </div>
       <div class="card">

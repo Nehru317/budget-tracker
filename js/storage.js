@@ -4,6 +4,7 @@ const ACCOUNT_TYPES = [
   ["checking", "Checking"],
   ["savings", "Savings"],
   ["cash", "Cash"],
+  ["retirement", "Retirement"],
   ["other", "Other"],
 ];
 
@@ -32,17 +33,19 @@ function migrateState(state) {
     state.accounts = state.accounts.map((account) => ({
       ...account,
       balance: Number(account.balance) || 0,
-      includeInCashFlow: account.includeInCashFlow ?? account.type !== "savings",
+      includeInCashFlow: account.type === "retirement"
+        ? false
+        : (account.includeInCashFlow ?? account.type !== "savings"),
     }));
   }
-  if (!state.primaryAccountId || !state.accounts.some((account) => account.id === state.primaryAccountId)) {
-    const spend = state.accounts.find((account) => account.includeInCashFlow) || state.accounts[0];
+  if (!state.primaryAccountId || !state.accounts.some((account) => account.id === state.primaryAccountId) || state.accounts.find((account) => account.id === state.primaryAccountId)?.type === "retirement") {
+    const spend = state.accounts.find((account) => account.type !== "retirement" && account.includeInCashFlow) || state.accounts.find((account) => account.type !== "retirement") || state.accounts[0];
     state.primaryAccountId = spend?.id || "";
   }
   state.paycheck = state.paycheck || {};
   if (!state.paycheck.accountId) state.paycheck.accountId = state.primaryAccountId;
   state.currentBalance = (state.accounts || [])
-    .filter((account) => account.includeInCashFlow !== false)
+    .filter((account) => account.type !== "retirement" && account.includeInCashFlow !== false)
     .reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
   return state;
 }

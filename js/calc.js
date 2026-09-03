@@ -59,10 +59,16 @@ function accountById(state, id) {
   return (state.accounts || []).find((account) => account.id === id) || null;
 }
 
+function isRetirementAccount(account) {
+  return Boolean(account && account.type === "retirement");
+}
+
 function defaultAccountId(state) {
-  if (state.primaryAccountId && accountById(state, state.primaryAccountId)) return state.primaryAccountId;
-  const spend = (state.accounts || []).find((account) => account.includeInCashFlow !== false);
-  return spend?.id || state.accounts?.[0]?.id || "";
+  const primary = accountById(state, state.primaryAccountId);
+  if (primary && !isRetirementAccount(primary)) return primary.id;
+  const spend = (state.accounts || []).find((account) => !isRetirementAccount(account) && account.includeInCashFlow !== false);
+  const liquid = (state.accounts || []).find((account) => !isRetirementAccount(account));
+  return spend?.id || liquid?.id || state.accounts?.[0]?.id || "";
 }
 
 function accountName(state, id) {
@@ -71,17 +77,29 @@ function accountName(state, id) {
 
 function spendingTotal(state) {
   return (state.accounts || [])
-    .filter((account) => account.includeInCashFlow !== false)
+    .filter((account) => !isRetirementAccount(account) && account.includeInCashFlow !== false)
     .reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
 }
 
 function savingsTotal(state) {
   return (state.accounts || [])
-    .filter((account) => account.includeInCashFlow === false)
+    .filter((account) => !isRetirementAccount(account) && account.includeInCashFlow === false)
     .reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
 }
 
 function assetsTotal(state) {
+  return (state.accounts || [])
+    .filter((account) => !isRetirementAccount(account))
+    .reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
+}
+
+function retirementTotal(state) {
+  return (state.accounts || [])
+    .filter((account) => isRetirementAccount(account))
+    .reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
+}
+
+function allAssetsTotal(state) {
   return (state.accounts || []).reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
 }
 
@@ -89,6 +107,7 @@ function isSpendingAccount(state, accountId) {
   if (!accountId) return true;
   const account = accountById(state, accountId);
   if (!account) return true;
+  if (isRetirementAccount(account)) return false;
   return account.includeInCashFlow !== false;
 }
 
@@ -351,6 +370,10 @@ function debtTotals(state) {
   const minPay = debts.reduce((s, d) => s + (Number(d.minPayment) || 0), 0);
   const extra = debts.reduce((s, d) => s + (Number(d.extraPayment) || 0), 0);
   return { balance, minPay, extra, count: debts.length };
+}
+
+function netWorth(state) {
+  return allAssetsTotal(state) - debtTotals(state).balance;
 }
 
 const GOAL_LINK_TOTAL = "__total__";
