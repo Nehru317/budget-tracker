@@ -392,6 +392,21 @@ body.light .bar { background: rgba(0,0,0,0.08); }
   z-index: 30;
 }
 
+.accounts-total {
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -0.4px;
+  margin: 0 0 14px;
+}
+.accounts-total span {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0;
+  margin-bottom: 4px;
+}
+
 .help {
   background: var(--accent-soft);
   border-radius: 10px;

@@ -186,6 +186,10 @@ function renderDashboard() {
     <div class="grid cols-2" style="margin-top:14px">
       <div class="card">
         <h3>Accounts</h3>
+        <div class="accounts-total">
+          <span>Accounts total</span>
+          ${formatMoney(assets)}
+        </div>
         ${(state.accounts || []).length ? (state.accounts || []).map((account) => `
           <div class="row-item">
             <div>
@@ -230,10 +234,14 @@ function renderAccounts() {
   $("page-accounts").innerHTML = `
     <div class="help">Spending accounts (checking and cash) drive the paycheck-to-paycheck forecast. Savings stays set aside until you transfer it.</div>
     <div class="toolbar">
-      <div class="muted">Total in accounts ${formatMoney(assetsTotal(state))} · Spending ${formatMoney(spendingTotal(state))} · Set aside ${formatMoney(savingsTotal(state))}</div>
+      <div class="muted">Spending ${formatMoney(spendingTotal(state))} · Set aside ${formatMoney(savingsTotal(state))}</div>
       <div class="spacer"></div>
       <button class="btn" id="transfer-money">Transfer</button>
       <button class="btn primary" id="add-account">Add account</button>
+    </div>
+    <div class="accounts-total">
+      <span>Accounts total</span>
+      ${formatMoney(assetsTotal(state))}
     </div>
     <div class="grid cols-3">
       ${accounts.length ? accounts.map((account) => `
