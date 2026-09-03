@@ -148,7 +148,6 @@ function renderDashboard() {
   const minBal = Math.min(...series.map((p) => p.balance));
   const maxBal = Math.max(...series.map((p) => p.balance), 1);
   const upcoming = futureEvents(state, 2).slice(0, 8);
-  const cash = spendingTotal(state);
   const assets = assetsTotal(state);
   const netWorth = assets - debts.balance;
   const overBudget = (state.budgets || []).filter((b) => (month.byCategory[b.category] || 0) > Number(b.monthlyLimit));
@@ -161,27 +160,10 @@ function renderDashboard() {
   }).join("");
 
   $("page-dashboard").innerHTML = `
-    <div class="grid cols-4">
-      <div class="card">
-        <div class="stat-label">Spending cash</div>
-        <div class="stat-value">${formatMoney(cash)}</div>
-        <div class="stat-note">Checking + cash · edit on Accounts</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Projected at next payday</div>
-        <div class="stat-value ${period.projected < 0 ? "negative" : "positive"}">${formatMoney(period.projected)}</div>
-        <div class="stat-note">${period.payday ? formatDateNice(period.payday) : "Set your paycheck date"}</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Lowest spending balance</div>
-        <div class="stat-value ${period.lowest < 0 ? "negative" : ""}">${formatMoney(period.lowest)}</div>
-        <div class="stat-note">Bills before payday: ${formatMoney(period.expenses)}</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Net worth snapshot</div>
-        <div class="stat-value">${formatMoney(netWorth)}</div>
-        <div class="stat-note">${formatMoney(assets)} in accounts minus ${formatMoney(debts.balance)} debt</div>
-      </div>
+    <div class="card">
+      <div class="stat-label">Net worth snapshot</div>
+      <div class="stat-value">${formatMoney(netWorth)}</div>
+      <div class="stat-note">${formatMoney(assets)} in accounts minus ${formatMoney(debts.balance)} debt</div>
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       <div class="card">
