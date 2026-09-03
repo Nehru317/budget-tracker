@@ -147,7 +147,15 @@ function renderDashboard() {
   const series = cashFlowSeries(state, 28);
   const minBal = Math.min(...series.map((p) => p.balance));
   const maxBal = Math.max(...series.map((p) => p.balance), 1);
-  const upcoming = futureEvents(state, 2).slice(0, 8);
+  const upcoming = (() => {
+    let paycheckKept = false;
+    return futureEvents(state, 2).filter((ev) => {
+      if (ev.source !== "paycheck") return true;
+      if (paycheckKept) return false;
+      paycheckKept = true;
+      return true;
+    }).slice(0, 8);
+  })();
   const assets = assetsTotal(state);
   const paydayTotal = projectedTotalAtPayday(state);
   const overBudget = (state.budgets || []).filter((b) => (month.byCategory[b.category] || 0) > Number(b.monthlyLimit));
