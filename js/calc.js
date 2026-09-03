@@ -343,6 +343,21 @@ function debtTotals(state) {
   return { balance, minPay, extra, count: debts.length };
 }
 
+const GOAL_LINK_TOTAL = "__total__";
+
+function goalSavedAmount(goal, state) {
+  if (goal.accountId === GOAL_LINK_TOTAL) return assetsTotal(state);
+  const linked = accountById(state, goal.accountId);
+  if (linked) return Number(linked.balance) || 0;
+  return Number(goal.saved) || 0;
+}
+
+function goalLinkLabel(goal, state) {
+  if (goal.accountId === GOAL_LINK_TOTAL) return "Accounts total";
+  const linked = accountById(state, goal.accountId);
+  return linked ? linked.name : "";
+}
+
 function goalPerPaycheck(goal, state) {
   const remaining = Math.max(0, (Number(goal.target) || 0) - (Number(goal.saved) || 0));
   if (remaining <= 0) return 0;

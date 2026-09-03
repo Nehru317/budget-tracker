@@ -916,22 +916,22 @@ function openBudgetModal(id) {
 function renderGoals() {
   $("page-goals").innerHTML = `
     <div class="toolbar">
-      <p class="muted" style="margin:0">Link a goal to a savings account to track progress from that balance. Unlinked goals are earmarks only.</p>
+      <p class="muted" style="margin:0">Link a goal to one account or to Accounts total. Unlinked goals use the "saved so far" amount you type.</p>
       <div class="spacer"></div>
       <button class="btn primary" id="add-goal">Add goal</button>
     </div>
     <div class="grid cols-2">
       ${(state.goals || []).length ? state.goals.map((g) => {
-        const linked = accountById(state, g.accountId);
+        const linkLabel = goalLinkLabel(g, state);
         const target = Number(g.target) || 0;
-        const saved = linked ? Number(linked.balance) || 0 : Number(g.saved) || 0;
+        const saved = goalSavedAmount(g, state);
         const pct = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
         const per = goalPerPaycheck({ ...g, saved }, state);
         return `<div class="card">
           <div class="toolbar"><h3 style="margin:0">${escapeHtml(g.name)}</h3><button class="btn small" data-edit-goal="${g.id}">Edit</button></div>
           <div class="stat-value">${formatMoney(saved)} <span class="muted" style="font-size:14px">of ${formatMoney(target)}</span></div>
           <div class="bar" style="margin:10px 0"><span style="width:${pct}%"></span></div>
-          <div class="stat-note">${linked ? `Linked to ${escapeHtml(linked.name)} · ` : ""}${g.deadline ? `By ${formatDateNice(g.deadline)} · ` : ""}Set aside about ${formatMoney(per)} per paycheck</div>
+          <div class="stat-note">${linkLabel ? `Linked to ${escapeHtml(linkLabel)} · ` : ""}${g.deadline ? `By ${formatDateNice(g.deadline)} · ` : ""}Set aside about ${formatMoney(per)} per paycheck</div>
         </div>`;
       }).join("") : `<div class="card empty">Emergency fund, vacation, car down payment — add a target and a date.</div>`}
     </div>
@@ -952,12 +952,13 @@ function openGoalModal(id) {
       <div class="field"><label>Link to account (optional)</label>
         <select id="g-account">
           <option value="">Not linked</option>
-          ${accountOptions(g.accountId, true)}
+          <option value="${GOAL_LINK_TOTAL}" ${g.accountId === GOAL_LINK_TOTAL ? "selected" : ""}>Accounts total</option>
+          ${accountOptions(g.accountId === GOAL_LINK_TOTAL ? "" : g.accountId, true)}
         </select>
       </div>
       <div class="field"><label>Target date</label><input id="g-dead" type="date" value="${escapeHtml(g.deadline || "")}"></div>
     </div>
-    <p class="muted" style="margin:12px 0 0">If you link an account, progress uses that account's balance instead of "saved so far."</p>
+    <p class="muted" style="margin:12px 0 0">Link to one account, or to Accounts total (checking + savings + cash). Linked progress ignores "saved so far."</p>
   `, [
     ...(id ? [{ label: "Delete", className: "danger", onClick: () => { state.goals = state.goals.filter((x) => x.id !== id); closeModal(); persist(); } }] : []),
     { label: "Cancel", onClick: closeModal },
