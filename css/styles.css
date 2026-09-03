@@ -406,6 +406,18 @@ body.light .bar { background: rgba(0,0,0,0.08); }
   letter-spacing: 0;
   margin-bottom: 4px;
 }
+.accounts-total .accounts-projected {
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+}
+.accounts-total .accounts-projected span {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+  margin-bottom: 0;
+}
 
 .help {
   background: var(--accent-soft);

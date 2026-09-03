@@ -1,13 +1,13 @@
-const CACHE = "budget-tracker-v8";
+const CACHE = "budget-tracker-v9";
 const FILES = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./css/styles.css?v=8",
-  "./js/storage.js?v=8",
-  "./js/calc.js?v=8",
-  "./js/csv.js?v=8",
-  "./js/app.js?v=8",
+  "./css/styles.css?v=9",
+  "./js/storage.js?v=9",
+  "./js/calc.js?v=9",
+  "./js/csv.js?v=9",
+  "./js/app.js?v=9",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

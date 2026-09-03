@@ -149,7 +149,7 @@ function renderDashboard() {
   const maxBal = Math.max(...series.map((p) => p.balance), 1);
   const upcoming = futureEvents(state, 2).slice(0, 8);
   const assets = assetsTotal(state);
-  const netWorth = assets - debts.balance;
+  const paydayTotal = projectedTotalAtPayday(state);
   const overBudget = (state.budgets || []).filter((b) => (month.byCategory[b.category] || 0) > Number(b.monthlyLimit));
 
   const chart = series.filter((_, i) => i % 2 === 0).map((p) => {
@@ -160,17 +160,18 @@ function renderDashboard() {
   }).join("");
 
   $("page-dashboard").innerHTML = `
-    <div class="card">
-      <div class="stat-label">Net worth snapshot</div>
-      <div class="stat-value">${formatMoney(netWorth)}</div>
-      <div class="stat-note">${formatMoney(assets)} in accounts minus ${formatMoney(debts.balance)} debt</div>
-    </div>
-    <div class="grid cols-2" style="margin-top:14px">
+    <div class="grid cols-2">
       <div class="card">
         <h3>Accounts</h3>
         <div class="accounts-total">
           <span>Accounts total</span>
           ${formatMoney(assets)}
+          <div class="accounts-projected">
+            ${formatMoney(paydayTotal.projected)}
+            <span>${paydayTotal.payday
+              ? `Projected after next paycheck · ${formatDateNice(paydayTotal.payday)}`
+              : "Set a next payday on Income to project this"}</span>
+          </div>
         </div>
         ${(state.accounts || []).length ? (state.accounts || []).map((account) => `
           <div class="row-item">

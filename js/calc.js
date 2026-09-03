@@ -247,6 +247,16 @@ function payPeriodSummary(state) {
   return { payday, income, expenses, projected, lowest, untilPayday };
 }
 
+function projectedTotalAtPayday(state) {
+  const payday = nextPayDate(state);
+  const assets = assetsTotal(state);
+  if (!payday) return { payday: null, income: 0, expenses: 0, projected: assets };
+  const untilPayday = futureEvents(state, 4).filter((ev) => ev.date <= payday);
+  const income = untilPayday.filter((e) => e.type === "income").reduce((s, e) => s + e.amount, 0);
+  const expenses = untilPayday.filter((e) => e.type === "expense").reduce((s, e) => s + e.amount, 0);
+  return { payday, income, expenses, projected: assets + income - expenses };
+}
+
 function monthKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
