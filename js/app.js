@@ -7,6 +7,7 @@ let whatIfExtra = 0;
 const PAGE_META = {
   dashboard: ["Dashboard", "Accounts, upcoming bills, and a snapshot of your money"],
   accounts: ["Accounts", "Checking, savings, cash, retirement, and transfers between them"],
+  tsp: ["TSP", "Thrift Savings Plan contribution mix across the core funds"],
   transactions: ["Transactions", "Current and future money in and out"],
   income: ["Income", "Biweekly paycheck and other deposits"],
   debts: ["Debts & Loans", "Balances, extra-payment what-ifs, and payoff estimates"],
@@ -250,6 +251,107 @@ function renderAccounts() {
       state.primaryAccountId = btn.dataset.defaultAccount;
       persist();
       toast("Default account updated");
+    });
+  });
+}
+
+const TSP_FUND_DETAILS = {
+  G: "Government Securities",
+  F: "Fixed Income Index",
+  C: "Common Stock Index",
+  S: "Small Cap Stock Index",
+  I: "International Stock Index",
+};
+
+function formatTspPct(value) {
+  const rounded = Math.round((Number(value) || 0) * 100) / 100;
+  return String(rounded);
+}
+
+function tspAllocationTotal(tsp) {
+  return (tsp?.funds || []).reduce((sum, fund) => sum + (Number(fund.pct) || 0), 0);
+}
+
+function tspIsBalanced(total) {
+  return Math.abs(total - 100) < 0.005;
+}
+
+function updateTspTotalUi() {
+  const total = tspAllocationTotal(state.tsp);
+  const balanced = tspIsBalanced(total);
+  const el = $("tsp-total");
+  const note = $("tsp-total-note");
+  if (el) {
+    el.textContent = `${formatTspPct(total)}%`;
+    el.className = balanced ? "positive" : "negative";
+  }
+  if (note) {
+    note.textContent = balanced
+      ? "Allocation adds up to 100%."
+      : "Allocation should add up to 100%. You can keep typing — it still saves.";
+    note.className = balanced ? "muted" : "negative";
+  }
+}
+
+function saveTspQuiet() {
+  saveState(state);
+  updateTspTotalUi();
+}
+
+function parseTspPct(raw) {
+  if (raw === "" || raw == null) return 0;
+  const pct = Number(raw);
+  return Number.isFinite(pct) && pct >= 0 ? pct : 0;
+}
+
+function renderTsp() {
+  const tsp = state.tsp || defaultTsp();
+  const total = tspAllocationTotal(tsp);
+  const balanced = tspIsBalanced(total);
+  $("page-tsp").innerHTML = `
+    <div class="help">These are the percentages going into each TSP fund — not a dollar contribution or paycheck deferral. They save as you type.</div>
+    <div class="card">
+      <h3>Current TSP contributions</h3>
+      <div class="form-grid">
+        <div class="field span-2">
+          <label>Date since last changed</label>
+          <input id="tsp-last-changed" type="date" value="${escapeHtml(tsp.lastChanged || "")}">
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        ${(tsp.funds || []).map((fund) => `
+          <div class="row-item">
+            <div>
+              <div>${escapeHtml(fund.id)} · ${escapeHtml(fund.name)}</div>
+              <div class="meta">${escapeHtml(TSP_FUND_DETAILS[fund.id] || "")}</div>
+            </div>
+            <div class="field" style="width:140px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <input id="tsp-pct-${escapeHtml(fund.id)}" data-tsp-fund="${escapeHtml(fund.id)}" type="number" min="0" step="0.01" value="${escapeHtml(fund.pct)}" aria-label="${escapeHtml(fund.name)} percent">
+                <span class="muted">%</span>
+              </div>
+            </div>
+          </div>`).join("")}
+      </div>
+      <div class="row-item" style="margin-top:6px">
+        <span>Total</span>
+        <strong id="tsp-total" class="${balanced ? "positive" : "negative"}">${formatTspPct(total)}%</strong>
+      </div>
+      <p id="tsp-total-note" class="${balanced ? "muted" : "negative"}" style="margin:8px 0 0">${balanced
+        ? "Allocation adds up to 100%."
+        : "Allocation should add up to 100%. You can keep typing — it still saves."}</p>
+    </div>
+  `;
+  $("tsp-last-changed")?.addEventListener("change", () => {
+    state.tsp.lastChanged = fieldValue("tsp-last-changed");
+    saveTspQuiet();
+  });
+  $("page-tsp").querySelectorAll("[data-tsp-fund]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const fund = (state.tsp.funds || []).find((item) => item.id === input.dataset.tspFund);
+      if (!fund) return;
+      fund.pct = parseTspPct(input.value);
+      saveTspQuiet();
     });
   });
 }
@@ -1127,6 +1229,7 @@ function render() {
   const map = {
     dashboard: renderDashboard,
     accounts: renderAccounts,
+    tsp: renderTsp,
     transactions: renderTransactions,
     income: renderIncome,
     debts: renderDebts,

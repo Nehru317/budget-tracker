@@ -10,7 +10,7 @@
   <title>Budget Tracker</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=12" />
+  <link rel="stylesheet" href="css/styles.css?v=13" />
 </head>
 <body>
   <div class="nav-scrim" id="nav-scrim"></div>
@@ -28,6 +28,7 @@
       <nav class="nav">
         <button class="nav-btn active" data-page="dashboard">Dashboard</button>
         <button class="nav-btn" data-page="accounts">Accounts</button>
+        <button class="nav-btn" data-page="tsp">TSP</button>
         <button class="nav-btn" data-page="transactions">Transactions</button>
         <button class="nav-btn" data-page="income">Income</button>
         <button class="nav-btn" data-page="debts">Debts &amp; Loans</button>
@@ -59,6 +60,7 @@
 
       <section id="page-dashboard" class="page active"></section>
       <section id="page-accounts" class="page"></section>
+      <section id="page-tsp" class="page"></section>
       <section id="page-transactions" class="page"></section>
       <section id="page-income" class="page"></section>
       <section id="page-debts" class="page"></section>
@@ -89,10 +91,10 @@
       backdrop.hidden = true;
     }
   </script>
-  <script src="js/storage.js?v=12"></script>
-  <script src="js/calc.js?v=12"></script>
-  <script src="js/csv.js?v=12"></script>
-  <script src="js/app.js?v=12"></script>
+  <script src="js/storage.js?v=13"></script>
+  <script src="js/calc.js?v=13"></script>
+  <script src="js/csv.js?v=13"></script>
+  <script src="js/app.js?v=13"></script>
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       navigator.serviceWorker.register("sw.js").catch(function () {});

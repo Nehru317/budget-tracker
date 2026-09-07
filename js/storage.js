@@ -24,6 +24,35 @@ function defaultAccounts(checkingBalance) {
   };
 }
 
+const DEFAULT_TSP_FUNDS = [
+  { id: "G", name: "G Fund", pct: 0 },
+  { id: "F", name: "F Fund", pct: 0 },
+  { id: "C", name: "C Fund", pct: 0 },
+  { id: "S", name: "S Fund", pct: 0 },
+  { id: "I", name: "I Fund", pct: 0 },
+];
+
+function defaultTsp() {
+  return {
+    lastChanged: "",
+    funds: DEFAULT_TSP_FUNDS.map((fund) => ({ ...fund })),
+  };
+}
+
+function migrateTsp(tsp) {
+  const defaults = defaultTsp();
+  if (!tsp || typeof tsp !== "object") return defaults;
+  const byId = new Map((Array.isArray(tsp.funds) ? tsp.funds : []).map((fund) => [fund.id, fund]));
+  return {
+    lastChanged: typeof tsp.lastChanged === "string" ? tsp.lastChanged : "",
+    funds: defaults.funds.map((fund) => {
+      const existing = byId.get(fund.id);
+      const pct = existing ? Number(existing.pct) : 0;
+      return { ...fund, pct: Number.isFinite(pct) && pct >= 0 ? pct : 0 };
+    }),
+  };
+}
+
 function migrateState(state) {
   if (!Array.isArray(state.accounts) || state.accounts.length === 0) {
     const seeded = defaultAccounts(state.currentBalance);
@@ -44,6 +73,7 @@ function migrateState(state) {
   }
   state.paycheck = state.paycheck || {};
   if (!state.paycheck.accountId) state.paycheck.accountId = state.primaryAccountId;
+  state.tsp = migrateTsp(state.tsp);
   state.currentBalance = (state.accounts || [])
     .filter((account) => account.type !== "retirement" && account.includeInCashFlow !== false)
     .reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
@@ -68,6 +98,7 @@ const DEFAULT_STATE = {
   debts: [],
   budgets: [],
   goals: [],
+  tsp: defaultTsp(),
 };
 
 function loadState() {
@@ -79,6 +110,7 @@ function loadState() {
       ...structuredClone(DEFAULT_STATE),
       ...parsed,
       paycheck: { ...DEFAULT_STATE.paycheck, ...(parsed.paycheck || {}) },
+      tsp: parsed.tsp,
       accounts: parsed.accounts || [],
       deposits: parsed.deposits || [],
       transactions: parsed.transactions || [],
@@ -106,6 +138,7 @@ function importState(jsonText) {
     ...structuredClone(DEFAULT_STATE),
     ...parsed,
     paycheck: { ...DEFAULT_STATE.paycheck, ...(parsed.paycheck || {}) },
+    tsp: parsed.tsp,
     accounts: Array.isArray(parsed.accounts) ? parsed.accounts : [],
     deposits: Array.isArray(parsed.deposits) ? parsed.deposits : [],
     transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
@@ -160,5 +193,15 @@ function sampleState() {
     goals: [
       { id: uid(), name: "Emergency fund", target: 3000, saved: 650, deadline: "2026-12-31", accountId: savingsId },
     ],
+    tsp: {
+      lastChanged: "2026-01-15",
+      funds: [
+        { id: "G", name: "G Fund", pct: 0 },
+        { id: "F", name: "F Fund", pct: 0 },
+        { id: "C", name: "C Fund", pct: 60 },
+        { id: "S", name: "S Fund", pct: 20 },
+        { id: "I", name: "I Fund", pct: 20 },
+      ],
+    },
   });
 }
